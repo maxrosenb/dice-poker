@@ -23,6 +23,12 @@ export function PlayerArea({
   const playerNumber = isPlayer1 ? 1 : 2;
   const playerData = isPlayer1 ? gameState.player1 : gameState.player2;
 
+  console.log("PlayerArea render:", {
+    isPlayer1,
+    playerData,
+    bonusDie: playerData.bonusDie,
+  });
+
   return (
     <div className={`player-area ${isOpponent ? "opponent" : "player"}`}>
       <div className="player-info">
@@ -32,6 +38,7 @@ export function PlayerArea({
             dice={playerData.dice}
             isOpponent={isOpponent}
             showdown={gameState.status === "complete"}
+            bonusDie={playerData.bonusDie}
           />
         </div>
       </div>
@@ -48,27 +55,14 @@ export function PlayerArea({
         gameState.status === "betting" &&
         gameState.currentTurn === playerNumber && (
           <div className="betting-controls">
-            <button
-              onClick={() => onAction?.("fold")}
-              className="action-button fold"
-            >
-              Fold
-            </button>
-            <button
-              onClick={() => onAction?.("call")}
-              className="action-button call"
-            >
-              {gameState.currentBet === gameState.lastBet
-                ? "Check"
-                : `Call ${gameState.currentBet - gameState.lastBet}`}
-            </button>
-            <div className="raise-controls">
+            <div className="bet-input-group">
               <input
                 type="number"
                 value={betInput}
                 onChange={(e) => onBetInputChange?.(Number(e.target.value))}
                 min={gameState.currentBet + 1}
-                step={1}
+                className="bet-input"
+                placeholder="Amount"
               />
               <button
                 onClick={() => onAction?.("raise", betInput)}
@@ -78,12 +72,43 @@ export function PlayerArea({
                 Raise to
               </button>
             </div>
+            <div className="action-buttons">
+              <button
+                onClick={() => onAction?.("fold")}
+                className="action-button fold"
+              >
+                Fold
+              </button>
+              <button
+                onClick={() => onAction?.("call")}
+                className="action-button call"
+              >
+                {gameState.currentBet === gameState.lastBet
+                  ? "Check"
+                  : `Call ${gameState.currentBet - gameState.lastBet}`}
+              </button>
+            </div>
           </div>
         )}
 
       {gameState.status === "complete" && gameState.winner === playerNumber && (
         <div className="winner-label">Winner!</div>
       )}
+    </div>
+  );
+}
+
+interface MainMenuProps {
+  onStartGame: () => void;
+}
+
+export function MainMenu({ onStartGame }: MainMenuProps) {
+  return (
+    <div className="main-menu">
+      <h1>Dice Poker</h1>
+      <button onClick={onStartGame} className="start-button">
+        Start Game
+      </button>
     </div>
   );
 }

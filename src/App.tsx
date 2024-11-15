@@ -4,11 +4,35 @@ import { db } from "./firebase";
 import { ChipStack } from "./components/ChipStack";
 import { GameState } from "./types/game";
 import { PlayerArea } from "./components/PlayerArea";
+import { MainMenu } from "./components/MainMenu";
 import "./styles.css";
 // import "./App.css";
 // other imports below
 
+const initialGameState: GameState = {
+  player1: {
+    chips: 200,
+    dice: [0, 0],
+    hasRolled: false,
+  },
+  player2: {
+    chips: 200,
+    dice: [0, 0],
+    hasRolled: false,
+  },
+  currentBet: 0,
+  lastBet: 0,
+  currentTurn: 2,
+  status: "rolling",
+  dealer: 1,
+  smallBlind: 5,
+  bigBlind: 10,
+  blindsPaid: false,
+  lastStartingPlayer: 1,
+};
+
 function App() {
+  const [showMenu, setShowMenu] = useState(true);
   const [gameId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("gameId") || crypto.randomUUID();
@@ -21,20 +45,11 @@ function App() {
 
   const isPlayer1 = determineIsPlayer1();
 
-  const [gameState, setGameState] = useState<GameState>({
-    player1: { dice: [0, 0], hasRolled: false, chips: 200 },
-    player2: { dice: [0, 0], hasRolled: false, chips: 200 },
-    currentBet: 0,
-    lastBet: 0,
-    currentTurn: 1,
-    status: "rolling",
-    smallBlind: 5,
-    bigBlind: 10,
-    blindsPaid: false,
-    dealer: 1,
-  });
+  const [gameState, setGameState] = useState<GameState>(initialGameState);
 
   const [betInput, setBetInput] = useState<number>(0);
+
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     const gameRef = ref(db, `games/${gameId}`);
@@ -97,11 +112,20 @@ function App() {
     const gameRef = ref(db, `games/${gameId}`);
 
     const playerKey = isPlayer1 ? "player1" : "player2";
+
+    // Add bonus die if doubles are rolled, use null instead of undefined
+    const bonusDie = roll1 === roll2 ? Math.floor(Math.random() * 4) + 1 : null; // Use null instead of undefined
+
+    if (bonusDie !== null) {
+      playSound("roll"); // Optional: play roll sound again for bonus die
+    }
+
     let newGameState = {
       ...gameState,
       [playerKey]: {
         ...gameState[playerKey],
         dice: [roll1, roll2],
+        bonusDie: bonusDie, // This will now be a number or null
         hasRolled: true,
       },
     };
@@ -130,10 +154,12 @@ function App() {
     fold: new Audio("/fold-sound.mp3"), // Player folds
   });
 
-  const playSound = (soundName: keyof typeof soundRefs.current) => {
-    soundRefs.current[soundName]
-      .play()
-      .catch((e) => console.log("Error playing sound:", e));
+  const playSound = (soundName: string) => {
+    if (!isMuted) {
+      soundRefs.current[soundName]
+        .play()
+        .catch((e) => console.log("Error playing sound:", e));
+    }
   };
 
   // Add logging to handleAction
@@ -198,8 +224,8 @@ function App() {
             // This is a check-back, end the round
             newGameState.status = "complete";
             newGameState.winner = determineWinner(
-              gameState.player1.dice,
-              gameState.player2.dice
+              gameState.player1.dice as [number, number],
+              gameState.player2.dice as [number, number]
             );
           }
         } else {
@@ -250,8 +276,8 @@ function App() {
             console.log("Ending round");
             newGameState.status = "complete";
             newGameState.winner = determineWinner(
-              gameState.player1.dice,
-              gameState.player2.dice
+              gameState.player1.dice as [number, number],
+              gameState.player2.dice as [number, number]
             );
 
             if (newGameState.winner === 1) {
@@ -423,21 +449,26 @@ function App() {
     isPlayer1,
   ]);
 
-  const determineWinner = (
-    p1Dice: [number, number],
-    p2Dice: [number, number]
-  ): 1 | 2 => {
-    // Calculate sums for each player
-    const p1Sum = p1Dice[0] + p1Dice[1];
-    const p2Sum = p2Dice[0] + p2Dice[1];
+  const determineWinner = (player1Dice: number[], player2Dice: number[]) => {
+    const p1Total =
+      player1Dice.reduce((a, b) => a + b, 0) +
+      (gameState.player1.bonusDie || 0);
+    const p2Total =
+      player2Dice.reduce((a, b) => a + b, 0) +
+      (gameState.player2.bonusDie || 0);
 
-    if (p1Sum !== p2Sum) {
-      // Higher sum wins
-      return p1Sum > p2Sum ? 1 : 2;
-    } else {
-      // In case of equal sums, Player 1 wins the tie
-      return 1;
-    }
+    console.log(
+      `Player 1 total: ${p1Total} (${player1Dice.join(",")}${
+        gameState.player1.bonusDie ? " +" + gameState.player1.bonusDie : ""
+      })`
+    );
+    console.log(
+      `Player 2 total: ${p2Total} (${player2Dice.join(",")}${
+        gameState.player2.bonusDie ? " +" + gameState.player2.bonusDie : ""
+      })`
+    );
+
+    return p1Total > p2Total ? 1 : 2;
   };
 
   // Keep the win/lose sound effect
@@ -457,6 +488,98 @@ function App() {
       playSound("join");
     }
   }, [isPlayer1, player2Joined, gameState.player2.hasRolled]);
+
+  // Instead, let's just reset the game after a delay
+  useEffect(() => {
+    if (gameState.status === "complete") {
+      const timer = setTimeout(() => {
+        // Reset for next hand but stay at the table
+        const nextDealer = gameState.lastStartingPlayer === 1 ? 2 : 1;
+        const firstToAct = nextDealer === 1 ? 2 : 1;
+        console.log("Next dealer:", nextDealer, "First to act:", firstToAct);
+
+        setGameState({
+          ...initialGameState,
+          dealer: nextDealer,
+          currentTurn: firstToAct,
+          lastStartingPlayer: nextDealer,
+          player1: {
+            ...initialGameState.player1,
+            chips: gameState.player1.chips,
+          },
+          player2: {
+            ...initialGameState.player2,
+            chips: gameState.player2.chips,
+          },
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.status]);
+
+  const handleStartGame = () => {
+    setShowMenu(false);
+    setGameState(initialGameState);
+    setBetInput(0);
+  };
+
+  if (showMenu) {
+    return <MainMenu onStartGame={handleStartGame} />;
+  }
+
+  const handleRoll = () => {
+    const newGameState = { ...gameState };
+    const isPlayer1Turn = gameState.currentTurn === 1;
+    const playerData = isPlayer1Turn
+      ? newGameState.player1
+      : newGameState.player2;
+
+    // Roll two dice
+    const die1 = Math.floor(Math.random() * 6) + 1;
+    const die2 = Math.floor(Math.random() * 6) + 1;
+    playerData.dice = [die1, die2];
+
+    // Check for doubles and roll bonus die if needed
+    if (die1 === die2) {
+      const bonusDie = Math.floor(Math.random() * 4) + 1; // Roll 1-4
+      playerData.bonusDie = bonusDie;
+      console.log("DOUBLES ROLLED!", {
+        die1,
+        die2,
+        bonusDie,
+        playerData,
+      });
+    } else {
+      playerData.bonusDie = undefined;
+    }
+
+    playerData.hasRolled = true;
+
+    // Update the game state based on whether both players have rolled
+    if (
+      (isPlayer1Turn && newGameState.player2.hasRolled) ||
+      (!isPlayer1Turn && newGameState.player1.hasRolled)
+    ) {
+      newGameState.status = "betting";
+      // Pay blinds if they haven't been paid yet
+      if (!newGameState.blindsPaid) {
+        const smallBlindPlayer = newGameState.dealer === 1 ? 2 : 1;
+        if (smallBlindPlayer === 1) {
+          newGameState.player1.chips -= newGameState.smallBlind;
+          newGameState.player2.chips -= newGameState.bigBlind;
+        } else {
+          newGameState.player2.chips -= newGameState.smallBlind;
+          newGameState.player1.chips -= newGameState.bigBlind;
+        }
+        newGameState.currentBet = newGameState.bigBlind;
+        newGameState.lastBet = newGameState.smallBlind;
+        newGameState.blindsPaid = true;
+      }
+    }
+
+    console.log("Setting new game state:", newGameState);
+    setGameState(newGameState);
+  };
 
   return (
     <div className="poker-table">
@@ -588,6 +711,18 @@ function App() {
         betInput={betInput}
         onBetInputChange={(value) => setBetInput(value)}
       />
+
+      <button
+        className={`mute-button ${isMuted ? "muted" : ""}`}
+        onClick={() => setIsMuted(!isMuted)}
+        title={isMuted ? "Unmute" : "Mute"}
+      >
+        {isMuted ? (
+          <span className="material-icons">volume_off</span>
+        ) : (
+          <span className="material-icons">volume_up</span>
+        )}
+      </button>
     </div>
   );
 }

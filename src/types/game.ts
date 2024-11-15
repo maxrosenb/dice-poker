@@ -1,16 +1,26 @@
-export type GameState = {
-  player1: { dice: [number, number]; hasRolled: boolean; chips: number };
-  player2: { dice: [number, number]; hasRolled: boolean; chips: number };
+export interface GameState {
+  player1: {
+    chips: number;
+    dice: number[];
+    hasRolled: boolean;
+    bonusDie?: number;
+  };
+  player2: {
+    chips: number;
+    dice: number[];
+    hasRolled: boolean;
+    bonusDie?: number;
+  };
   currentBet: number;
   lastBet: number;
-  currentTurn: 1 | 2;
-  lastStartingPlayer?: 1 | 2;
+  currentTurn: number;
   status: "rolling" | "betting" | "complete";
-  winner?: 1 | 2;
-  lastAction?: string;
+  dealer: number;
   smallBlind: number;
   bigBlind: number;
   blindsPaid: boolean;
-  dealer: number;
-};
+  lastStartingPlayer: number;
+  winner?: number;
+  lastAction?: string;
+}
 export type PlayerAction = "call" | "fold" | "raise";

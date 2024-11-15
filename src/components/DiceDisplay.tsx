@@ -2,13 +2,22 @@ interface DiceDisplayProps {
   dice: number[];
   isOpponent?: boolean;
   showdown?: boolean;
+  bonusDie?: number;
 }
 
 export function DiceDisplay({
   dice,
   isOpponent = false,
   showdown = false,
+  bonusDie,
 }: DiceDisplayProps) {
+  console.log("DiceDisplay render:", {
+    dice,
+    isOpponent,
+    showdown,
+    bonusDie,
+  });
+
   return (
     <div className="dice-display">
       {dice.map((value, index) => (
@@ -65,6 +74,38 @@ export function DiceDisplay({
           )}
         </div>
       ))}
+      {bonusDie !== undefined && (
+        <div className={`die bonus ${isOpponent && !showdown ? "hidden" : ""}`}>
+          {!isOpponent || showdown ? (
+            <>
+              {bonusDie === 1 && <div className="dot center" />}
+              {bonusDie === 2 && (
+                <>
+                  <div className="dot top-left" />
+                  <div className="dot bottom-right" />
+                </>
+              )}
+              {bonusDie === 3 && (
+                <>
+                  <div className="dot top-left" />
+                  <div className="dot center" />
+                  <div className="dot bottom-right" />
+                </>
+              )}
+              {bonusDie === 4 && (
+                <>
+                  <div className="dot top-left" />
+                  <div className="dot top-right" />
+                  <div className="dot bottom-left" />
+                  <div className="dot bottom-right" />
+                </>
+              )}
+            </>
+          ) : (
+            <div className="question-mark">?</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
