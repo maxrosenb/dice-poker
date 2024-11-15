@@ -1,14 +1,22 @@
 interface DiceDisplayProps {
   dice: number[];
   isOpponent?: boolean;
+  showdown?: boolean;
 }
 
-export function DiceDisplay({ dice, isOpponent = false }: DiceDisplayProps) {
+export function DiceDisplay({
+  dice,
+  isOpponent = false,
+  showdown = false,
+}: DiceDisplayProps) {
   return (
     <div className="dice-display">
       {dice.map((value, index) => (
-        <div key={index} className={`die ${isOpponent ? "hidden" : ""}`}>
-          {!isOpponent ? (
+        <div
+          key={index}
+          className={`die ${isOpponent && !showdown ? "hidden" : ""}`}
+        >
+          {!isOpponent || showdown ? (
             <>
               {value === 1 && <div className="dot center" />}
               {value === 2 && (

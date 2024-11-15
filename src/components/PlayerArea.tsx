@@ -28,7 +28,11 @@ export function PlayerArea({
       <div className="player-info">
         <div className="chip-count">Chips: ${playerData.chips}</div>
         <div className="dice-area">
-          <DiceDisplay dice={playerData.dice} isOpponent={isOpponent} />
+          <DiceDisplay
+            dice={playerData.dice}
+            isOpponent={isOpponent}
+            showdown={gameState.status === "complete"}
+          />
         </div>
       </div>
 
@@ -54,7 +58,7 @@ export function PlayerArea({
               onClick={() => onAction?.("call")}
               className="action-button call"
             >
-              {gameState.currentBet === 0
+              {gameState.currentBet === gameState.lastBet
                 ? "Check"
                 : `Call ${gameState.currentBet - gameState.lastBet}`}
             </button>
@@ -69,7 +73,7 @@ export function PlayerArea({
               <button
                 onClick={() => onAction?.("raise", betInput)}
                 className="action-button raise"
-                disabled={betInput <= gameState.currentBet}
+                disabled={!betInput || betInput <= gameState.currentBet}
               >
                 Raise to
               </button>
