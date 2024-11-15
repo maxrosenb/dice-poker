@@ -203,14 +203,14 @@ function App() {
             );
           }
         } else {
-          console.log("Call action - Current game state:", {
-            blindsPaid: gameState.blindsPaid,
+          console.log("DETAILED CALL ACTION STATE:", {
+            currentPlayer: playerNumber,
             currentBet: gameState.currentBet,
             lastBet: gameState.lastBet,
-            lastAction: gameState.lastAction,
-            playerNumber,
-            currentTurn: gameState.currentTurn,
             dealer: gameState.dealer,
+            blindsPaid: gameState.blindsPaid,
+            lastAction: gameState.lastAction,
+            currentTurn: gameState.currentTurn,
           });
 
           // Calculate how much more this player needs to call
@@ -225,36 +225,29 @@ function App() {
             newGameState.player2.chips -= callAmount;
           }
 
-          // Use dealer property instead of lastStartingPlayer
-          const dealer = gameState.dealer ?? 1; // Default to 1 if undefined
-          const smallBlindPlayer = dealer === 1 ? 2 : 1;
-          const bigBlindPlayer = dealer;
-
-          const isSmallBlindCallingBigBlind =
+          // Simple check: if this is the first call to the big blind, give BB their option
+          const isFirstCall =
             gameState.blindsPaid &&
             gameState.currentBet === gameState.bigBlind &&
-            playerNumber === smallBlindPlayer &&
-            !gameState.lastAction?.includes("raised");
+            !gameState.lastAction;
 
-          console.log("Call evaluation:", {
-            isSmallBlindCallingBigBlind,
-            dealer,
-            smallBlindPlayer,
-            bigBlindPlayer,
-            playerNumber,
+          console.log("Call check:", {
+            isFirstCall,
+            blindsPaid: gameState.blindsPaid,
             currentBet: gameState.currentBet,
             bigBlind: gameState.bigBlind,
+            lastAction: gameState.lastAction,
           });
 
-          if (isSmallBlindCallingBigBlind) {
-            // Give the big blind their option
-            newGameState.currentTurn = bigBlindPlayer;
+          if (isFirstCall) {
+            // Give the other player their option
+            newGameState.currentTurn = isPlayer1 ? 2 : 1;
             newGameState.lastAction = `Player ${playerNumber} called`;
             newGameState.lastBet = gameState.currentBet;
-            console.log("Giving big blind option to Player", bigBlindPlayer);
+            console.log("Giving option to other player");
           } else {
             // End the round
-            console.log("Ending round - no big blind option");
+            console.log("Ending round");
             newGameState.status = "complete";
             newGameState.winner = determineWinner(
               gameState.player1.dice,
